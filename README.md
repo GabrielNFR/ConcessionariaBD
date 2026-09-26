@@ -1,10 +1,11 @@
 # ConcessionáriaBD
 
-Sistema de banco de dados para uma **concessionária de veículos**, com backend em
-**Java + MySQL e SQL explícito via JDBC** (sem ORM, sem framework).
+Sistema de banco de dados para uma **concessionária de veículos**, com **interface
+desktop em Java Swing** e **MySQL com SQL explícito via JDBC** (sem ORM, sem framework).
 
-Status atual: **backend completo e funcional** (models + DAOs). A interface visual
-ainda não existe.
+Status atual: **interface funcional** — janela única com menu de navegação e telas que
+já leem e gravam no banco. Ainda não existem telas para todas as 12 tabelas (veja a
+seção 3).
 
 ---
 
@@ -14,40 +15,51 @@ O escopo do projeto é obter, **por meio de uma interface**, o seguinte:
 
 | Requisito | Situação neste projeto |
 |---|---|
-| Inserir / excluir / alterar dados | ✅ `inserir` / `atualizar` / `excluir` nos **12 DAOs** |
-| Alteração em pelo menos 2 tabelas | ✅ Todas as 12 tabelas têm `insert` / `update` / `delete` nos DAOs |
-| Visualização dos dados | ✅ `listar()` em todos os DAOs e listagens com JOIN em 5 deles |
-| Gráficos / estatísticas | ✅ Consultas de agregação prontas para gráficos de pizza e barras |
-| Consultas com dificuldade | ✅ 10 consultas (C1–C10), várias com `JOIN`, `HAVING`, subconsulta e correlação |
+| Inserir / excluir / alterar dados | ✅ `inserir` / `atualizar` / `excluir` nos **12 DAOs**, já ligados na interface em **Clientes** e **Fornecedores** |
+| Alteração em pelo menos 2 tabelas | ✅ `cliente` + `endereco` (mesma tela, mesma operação), `compra` + `carro` (mesma transação) e `fornecedor` |
+| Visualização dos dados | ✅ `JTable` nas telas de Clientes, Fornecedores e no histórico de Compras; `listarParaTabela()` com `JOIN` em 5 DAOs |
+| Gráficos / estatísticas | ❌ ainda não implementado — não existe nenhuma consulta de agregação no código |
+| Consultas com dificuldade | ⚠️ existem 5 listagens com `JOIN`; o SQL das consultas ainda precisa ser entregue em arquivo próprio |
 
-O backend foi escrito para que **qualquer interface** apenas chame os métodos dos
-DAOs: nenhuma classe de tela precisa conter SQL.
+A regra do projeto é: **o SQL mora nos DAOs**. A tela não monta `INSERT`/`UPDATE` — ela
+chama métodos como `clienteDAO.inserir(...)`. (Única exceção hoje: `CompraView`, que
+abre uma transação própria para gravar `compra` + `carro` de uma vez.)
 
 ```mermaid
-flowchart LR
-    UI["Interface<br/>(ainda nao existe)"]
-    DAO["DAO<br/>SQL explicito + PreparedStatement"]
+flowchart TD
+    EXEC["main.Exec<br/>SwingUtilities.invokeLater"]
+    CTRL["controller.AppController<br/>troca de tela"]
+    WIN["view.JanelaPrincipal<br/>menu + area central"]
+    VIEW["view.View (abstrata)<br/>Inicio / Fornecedor / Compra / Cliente"]
+    DAO["dao.*DAO (12)<br/>SQL explicito + PreparedStatement"]
     CF["util.ConnectionFactory"]
-    DJ["DriverManager + mysql-connector-j"]
+    DJ["DriverManager + mysql-connector-j 9.3.0"]
     DB[("MySQL<br/>banco: concessionaria")]
 
-    UI --> DAO --> CF --> DJ --> DB
+    EXEC --> CTRL --> WIN --> VIEW
+    VIEW --> DAO --> CF --> DJ --> DB
 ```
 
 ---
 
 ## 2. Estrutura de pastas
 
+Pacote-base: `br.cesar.bd.concessionaria`. Não há `module-info.java` — de propósito,
+para não complicar o carregamento do driver JDBC.
+
 ```
 BDProj/
-├── src/
-│   ├── model/     12 Models (uma classe por tabela)
-│   ├── dao/       12 DAOs (um por tabela — todo o SQL de CRUD fica aqui)
-│   ├── util/      ConnectionFactory (unico ponto de conexao JDBC)
-│   └── main/      Exec (teste rapido do backend)
-├── lib/           mysql-connector-j-9.3.0.jar  (driver JDBC)
-├── bin/           classes compiladas (gerado, ignorado pelo git)
-├── .classpath     build path do Eclipse (JavaSE-19 + lib/mysql-connector-j-9.3.0.jar)
+├── src/br/cesar/bd/concessionaria/
+│   ├── main/         Exec — ponto de entrada; abre a janela
+│   ├── controller/   AppController — cria a janela, instancia as views, troca de tela
+│   ├── view/         View (abstrata), Rota, JanelaPrincipal e as telas
+│   ├── model/        12 Models (uma classe por tabela)
+│   ├── dao/          12 DAOs (um por tabela — todo o SQL fica aqui)
+│   └── util/         ConnectionFactory (unico ponto de conexao JDBC)
+├── lib/              mysql-connector-j-9.3.0.jar  (driver JDBC)
+├── bin/              classes compiladas (gerado, ignorado pelo git)
+├── .vscode/          settings.json com sourcePaths + referencedLibraries (ignorado pelo git)
+├── .classpath        build path do Eclipse (JavaSE-19 + lib/mysql-connector-j-9.3.0.jar)
 ├── .project
 ├── .gitignore
 └── README.md
@@ -55,29 +67,89 @@ BDProj/
 
 ---
 
-## 3. Pré-requisitos
+## 3. A interface (Swing)
 
-- **JDK 19 ou superior** (Temurin 21 é o que foi usado)
-- **MySQL Server 8+** rodando em `localhost:3306`
-- **Eclipse** (o projeto é um *Eclipse Project*, não é Maven/Gradle)
-- Driver **MySQL Connector/J** já incluído em `lib/`
+O `Exec` faz uma coisa só: subir a aplicação na *Event Dispatch Thread*.
+
+```java
+SwingUtilities.invokeLater(() -> new AppController().iniciar());
+```
+
+O `AppController` cria a `JanelaPrincipal` (um `JFrame` 800x600), instancia **uma única
+vez** cada tela listada no enum `Rota` e guarda tudo num `EnumMap<Rota, View>`. Navegar
+é chamar `navegar(Rota destino)`:
+
+1. `view.aoAbrir()` — a tela recarrega os dados do banco;
+2. `janela.updateMenu(destino)` — o botão da tela ativa fica destacado e desabilitado;
+3. `janela.setBody(view)` — a tela entra no painel central.
+
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant J as JanelaPrincipal
+    participant C as AppController
+    participant V as ClienteView
+    U->>J: clica em "Clientes"
+    J->>C: navegar(Rota.CLIENTE)
+    C->>V: aoAbrir()
+    V->>V: listarParaTabela() -> JTable
+    C->>J: updateMenu + setBody
+```
+
+### Telas
+
+| Botão (rota) | Classe | O que faz hoje |
+|---|---|---|
+| **Inicio** | `InicioView` | tela vazia, reservada para o dashboard |
+| **Fornecedores** | `FornecedorView` | CRUD de `fornecedor` (CNPJ, nome, e-mail) com `JTable`; clicar numa linha preenche o formulário e trava o CNPJ |
+| **Recibos de Compras** | `CompraView` | monta um lote de compra: escolhe o fornecedor, adiciona carros (modelo, cor, ano, preço, chassi) numa lista e grava `compra` + `carro` **numa única transação**; o botão *Ver Recibos* abre o histórico com `JOIN` do fornecedor |
+| **Clientes** | `ClienteView` | CRUD de `cliente` **e** `endereco` na mesma tela; a tabela vem de `listarParaTabela()` (JOIN cliente × endereço) e, ao excluir, chama `excluirSeNaoUsado()` para não deixar endereço órfão |
+
+`View` é a classe-mãe (abstrata, `extends JPanel`). Ela obriga cada tela a implementar
+`aoAbrir()` e entrega `mostrarMensagem(texto, erro)`, que é um `JOptionPane` já
+configurado como sucesso/erro — por isso nenhuma tela precisa de `System.out`.
+
+### O que ainda não está ligado
+
+- os botões `+` de **nova cor** e **nova marca** e o *Salvar Novo Modelo* (dentro da
+  `CompraView`) ainda **não gravam** no banco: só fecham o diálogo e recarregam a lista;
+- não existem telas para `venda`, `carro`, `vendedor`, `modelo`, `marca` e as tabelas de
+  telefone — os DAOs dessas tabelas já estão prontos, faltam as views;
+- nenhuma consulta de agregação, logo ainda sem gráficos/estatísticas.
 
 ---
 
-## 4. Preparando o banco (obrigatório antes de rodar)
+## 4. Pré-requisitos
+
+- **JDK 19 ou superior** (o `.classpath` aponta para JavaSE-19)
+- **MySQL Server 8+** rodando em `localhost:3306`
+- **VS Code** (com o *Extension Pack for Java*) ou **Eclipse** — o projeto é um
+  *Eclipse Project* puro, não é Maven/Gradle
+- Driver **MySQL Connector/J** já incluído em `lib/`
+- **Swing** já vem no JDK: nenhuma dependência extra para a interface
+
+---
+
+## 5. Preparando o banco (obrigatório antes de abrir a janela)
 
 1. Inicie o serviço do MySQL (`MySQLServer` no Windows: `services.msc`).
-2. Execute, nesta ordem, os scripts da entrega:
+2. Execute, nesta ordem, os scripts da entrega (no cliente `mysql` use
+   `source C:/caminho/script.sql`; no DBeaver, abra o arquivo e use `Alt+X`):
    1. script de **criação** (cria o banco `concessionaria` e as 12 tabelas);
    2. script de **inserção** (popula os dados).
-3. Confirme o nome do banco: `concessionaria`.
+3. Confirme com `show tables;` — têm que aparecer **12 tabelas**.
+
+> Se a criação parar em `compra`/`venda` com `ERROR 1064`, o script está usando
+> `data DATE DEFAULT CURRENT_DATE`. A partir do MySQL 8.0.13 o valor padrão de data
+> precisa de parênteses: `DEFAULT (CURRENT_DATE)`. A tabela `carro` falha em cascata
+> (`ERROR 1824: Failed to open the referenced table 'compra'`) só porque depende dela.
 
 ---
 
-## 5. Configuração da conexão
+## 6. Configuração da conexão
 
 Tudo o que importa para conectar está em **um único arquivo**:
-`src/util/ConnectionFactory.java`.
+`src/br/cesar/bd/concessionaria/util/ConnectionFactory.java`.
 
 ```java
 private static final String BANCO = "concessionaria";
@@ -104,17 +176,20 @@ Parâmetros da URL (mantenha os três):
 
 ---
 
-## 6. Como compilar e executar
+## 7. Como compilar e executar
 
-### Pelo Eclipse (recomendado)
+### Pelo VS Code
 
-1. `File > Import > General > Existing Projects into Workspace` → selecione `BDProj`.
-2. Confirme em `Project > Properties > Java Build Path` que:
-   - a JRE é Java 19+;
-   - existe a entrada `lib/mysql-connector-j-9.3.0.jar` em **Libraries**.
-3. `F5` (Refresh) e `Project > Clean…` para forçar o rebuild.
-4. Rode `src/main/Exec.java` com `Ctrl+F11` — ele insere um modelo de exemplo e
-   lista modelos e marcas (veja a seção 7).
+O `.vscode/settings.json` do projeto já aponta o código-fonte e o driver, então não
+precisa configurar build path na mão:
+
+```json
+"java.project.sourcePaths": ["src"],
+"java.project.referencedLibraries": ["lib/**/*.jar"]
+```
+
+Abra `src/br/cesar/bd/concessionaria/main/Exec.java` e rode (botão ▶ no `main` ou
+`Ctrl+F5`). Deve abrir a janela **Gestão de Concessionária**.
 
 ### Pelo terminal (PowerShell)
 
@@ -122,63 +197,45 @@ Parâmetros da URL (mantenha os três):
 cd d:\BDProj
 New-Item -ItemType Directory -Force bin | Out-Null
 javac -d bin -encoding UTF-8 (Get-ChildItem -Recurse -Filter *.java src).FullName
-java -cp "bin;lib/mysql-connector-j-9.3.0.jar" main.Exec
+java -cp "bin;lib/mysql-connector-j-9.3.0.jar" br.cesar.bd.concessionaria.main.Exec
 ```
 
 > No Windows o separador do classpath é `;`. No Linux/Mac seria `:`.
 > O `-encoding UTF-8` evita que o `javac` leia os fontes como Cp1252.
+> Sem o JAR no classpath o projeto **compila** normalmente, mas quebra ao rodar com
+> `No suitable driver found for jdbc:mysql://...`.
 
-⚠️ O projeto **compila** mesmo sem o JAR — a falta do driver só aparece em execução,
-com `No suitable driver found for jdbc:mysql://...`.
+### Pelo Eclipse (alternativa)
 
----
-
-## 7. O que o `main` faz hoje
-
-Sem interface visual, `src/main/Exec.java` funciona como um teste rápido do backend:
-insere um modelo de exemplo e lista duas tabelas, tudo através dos DAOs.
-
-```java
-modeloDAO.inserir(new Modelo(0, "Corolla", 1));
-
-System.out.println("Modelos cadastrados:");
-List<Modelo> modelos = modeloDAO.listar();
-modelos.forEach(m -> System.out.println(m.getId() + " - " + m.getNome()));
-
-System.out.println("\nMarcas cadastradas:");
-List<Marca> marcas = marcaDAO.listar();
-marcas.forEach(m -> System.out.println(m.getId() + " - " + m.getNome()));
-```
-
-Saída esperada (o `stack trace` no fim significa que o banco ou as credenciais não
-responderam):
-
-```
-Modelos cadastrados:
-3 - Corolla
-
-Marcas cadastradas:
-1 - Toyota
-2 - Volkswagen
-```
-
-Dois detalhes desse trecho:
-
-- o `1` de `new Modelo(0, "Corolla", 1)` é o `marca_id` — a marca de `id = 1` precisa
-  existir, senão o `INSERT` falha por chave estrangeira;
-- o `0` é o `id`, que o `ModeloDAO` ignora (a coluna é `AUTO_INCREMENT`), então
-  **cada execução insere um "Corolla" novo**.
-
-Quando a interface visual existir, ela substitui esse `main` e chama os mesmos DAOs.
+1. `File > Import > General > Existing Projects into Workspace` → selecione `BDProj`.
+2. Confirme em `Project > Properties > Java Build Path` que a JRE é Java 19+ e que
+   existe a entrada `lib/mysql-connector-j-9.3.0.jar` em **Libraries**.
+3. `F5` (Refresh) e `Project > Clean…` para forçar o rebuild.
+4. Rode `src/br/cesar/bd/concessionaria/main/Exec.java` com `Ctrl+F11`.
 
 ---
 
-## 8. Conectando pelo DBeaver (cliente visual)
+## 8. Problemas comuns (Java/JDBC)
+
+| Mensagem / sintoma | Causa provável |
+|---|---|
+| `No suitable driver found for jdbc:mysql://...` | o `mysql-connector-j-9.3.0.jar` ficou fora do classpath (compila e quebra só ao rodar) |
+| `Access denied for user 'root'@'localhost' (using password: YES)` | a senha do `ConnectionFactory` é diferente da senha real do MySQL |
+| `Unknown database 'concessionaria'` | o script de criação não foi executado (seção 5) |
+| `Communications link failure` | serviço do MySQL parado ou porta diferente de 3306 |
+| `The server time zone value ... is unrecognized` | falta `serverTimezone=America/Sao_Paulo` na URL |
+| `Cannot add or update a child row: a foreign key constraint fails` | tentar gravar o filho antes do pai (ex.: carro sem compra, cliente sem endereço) |
+| `Duplicate entry ... for key ...` | chave já existente: CNPJ, CPF ou chassi repetido |
+| A janela não abre | veja o terminal: erro na *EDT* aparece no console, mesmo quando a tela de erro não chega a aparecer |
+
+---
+
+## 9. Conectando pelo DBeaver (cliente visual)
 
 O DBeaver é só uma ferramenta para **olhar e manipular** o banco por fora do Java.
 Ele não substitui o driver do projeto.
 
-### 8.1 Criar a conexão
+### 9.1 Criar a conexão
 
 1. `Database > New Database Connection` (ou `Ctrl+Shift+N`).
 2. Selecione **MySQL** → `Next`.
@@ -201,7 +258,7 @@ Ele não substitui o driver do projeto.
      **Find Class** (deve encontrar `com.mysql.cj.jdbc.Driver`).
 5. `Finish`.
 
-### 8.2 Propriedades do driver equivalentes ao Java
+### 9.2 Propriedades do driver equivalentes ao Java
 
 Na aba **Driver properties** (ou direto na JDBC URL), use os **mesmos** parâmetros do
 `ConnectionFactory` — sem eles a conexão falha com os mesmos erros do Java:
@@ -218,7 +275,7 @@ JDBC URL para copiar e colar (aba *Main > URL*):
 jdbc:mysql://localhost:3306/concessionaria?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Sao_Paulo
 ```
 
-### 8.3 O que fazer no DBeaver
+### 9.3 O que fazer no DBeaver
 
 | Objetivo | Como |
 |---|---|
@@ -230,7 +287,7 @@ jdbc:mysql://localhost:3306/concessionaria?useSSL=false&allowPublicKeyRetrieval=
 | Gerar um `SELECT` pronto | botão direito na tabela → `Generate SQL > SELECT` |
 | Importar um script `.sql` | abra o arquivo e pressione `Alt+X` |
 
-### 8.4 Problemas comuns
+### 9.4 Problemas comuns (DBeaver)
 
 | Mensagem | Causa / solução |
 |---|---|
@@ -239,6 +296,6 @@ jdbc:mysql://localhost:3306/concessionaria?useSSL=false&allowPublicKeyRetrieval=
 | `Unknown database 'concessionaria'` | o script de criação não foi executado |
 | `Communications link failure` | serviço do MySQL parado ou porta diferente de 3306 |
 | `The server time zone value ... is unrecognized` | falta `serverTimezone=America/Sao_Paulo` |
-| `No suitable driver found` (no Java) | o JAR não está no build path do Eclipse |
+| `No suitable driver found` (no Java) | o JAR não está no classpath/`referencedLibraries` (seção 7) |
 
 ---
