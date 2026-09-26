@@ -4,7 +4,8 @@ public enum Rota {
 	INICIO("Inicio",InicioView.class),
 	FORNECEDOR("Fornecedores",FornecedorView.class),
 	COMPRA("Recibos de Compras",CompraView.class),
-	CLIENTE("Clientes",ClienteView.class);
+	CLIENTE("Clientes",ClienteView.class),
+	RELATORIOS("Relatorios",RelatoriosView.class);
 	
 	private final String text;
 	private final Class<? extends View> implementation;
