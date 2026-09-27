@@ -37,7 +37,7 @@ public class RelatoriosView extends View {
         JButton btnRel1 = new JButton("1. Total Comprado por Fornecedor");
         JButton btnRel2 = new JButton("2. Resumo de Carros no Estoque");
         JButton btnRel3 = new JButton("3. Distribuição de Clientes por Cidade");
-        JButton btnRel4 = new JButton("4. Top 10 Carros Mais Caros (Disponíveis)");
+        JButton btnRel4 = new JButton("4. Vendas Acima da Média");
 
         painelBotoes.add(btnRel1);
         painelBotoes.add(btnRel2);
@@ -63,7 +63,7 @@ public class RelatoriosView extends View {
         btnRel1.addActionListener(e -> carregarRelatorio(1, "Total Gasto em Compras por Fornecedor"));
         btnRel2.addActionListener(e -> carregarRelatorio(2, "Visão Geral: Valor e Quantidade do Estoque por Modelo"));
         btnRel3.addActionListener(e -> carregarRelatorio(3, "Distribuição Geográfica dos Clientes Cadastrados"));
-        btnRel4.addActionListener(e -> carregarRelatorio(4, "Top 10 Carros de Maior Valor Disponíveis no Estoque"));
+        btnRel4.addActionListener(e -> carregarRelatorio(4, "Vendas Acima da Média Geral"));
     }
 
     @Override
@@ -132,12 +132,11 @@ public class RelatoriosView extends View {
             case 4: {
                 DefaultCategoryDataset dataset = new DefaultCategoryDataset();
                 for (int i = 0; i < modelo.getRowCount(); i++) {
-                    String categoria = modelo.getValueAt(i, 1) + " " + modelo.getValueAt(i, 2)
-                            + " (" + modelo.getValueAt(i, 4) + ")";
-                    double valor = ((Number) modelo.getValueAt(i, 5)).doubleValue();
-                    dataset.addValue(valor, "Preço", categoria);
+                    String categoria = "#" + modelo.getValueAt(i, 0) + " " + modelo.getValueAt(i, 2);
+                    double valor = ((Number) modelo.getValueAt(i, 4)).doubleValue();
+                    dataset.addValue(valor, "Valor da venda", categoria);
                 }
-                chart = ChartFactory.createBarChart(titulo, "Carro", "Preço (R$)",
+                chart = ChartFactory.createBarChart(titulo, "Venda / cliente", "Valor (R$)",
                         dataset, PlotOrientation.HORIZONTAL, true, true, false);
                 break;
             }

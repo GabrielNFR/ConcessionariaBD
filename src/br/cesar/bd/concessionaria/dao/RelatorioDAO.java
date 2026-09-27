@@ -38,14 +38,12 @@ public class RelatorioDAO {
                 break;
                 
             case 4:
-                sql = "SELECT ca.chassi AS Chassi, ma.nome AS Marca, mo.nome AS Modelo, co.nome AS Cor, ca.ano AS Ano, ca.preco AS Preco " +
-                      "FROM carro ca " +
-                      "INNER JOIN modelo mo ON ca.modelo_id = mo.id " +
-                      "INNER JOIN marca ma ON mo.marca_id = ma.id " +
-                      "INNER JOIN cor co ON ca.cor_id = co.id " +
-                      "WHERE ca.venda_id IS NULL " +
-                      "ORDER BY ca.preco DESC " +
-                      "LIMIT 10";
+                sql = "SELECT v.id AS Venda, v.data AS Data, c.nome AS Cliente, vd.nome AS Vendedor, v.valor AS Valor " +
+                      "FROM venda v " +
+                      "INNER JOIN cliente c ON c.CPF = v.cliente_CPF " +
+                      "INNER JOIN vendedor vd ON vd.id = v.vendedor_id " +
+                      "WHERE v.valor > (SELECT AVG(valor) FROM venda) " +
+                      "ORDER BY v.valor DESC";
                 break;
         }
 
