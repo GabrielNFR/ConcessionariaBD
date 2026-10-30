@@ -20,7 +20,8 @@ O objetivo é cobrir, por meio de uma interface, os requisitos abaixo.
 | Alteração em pelo menos 2 tabelas | `cliente` e `endereco` na mesma tela, `compra` e `carro` na mesma transação, além de `fornecedor` |
 | Visualização dos dados | `JTable` nas telas de Clientes, Fornecedores, histórico de Compras e nos 4 relatórios; `listarParaTabela()` com `JOIN` em 5 DAOs |
 | Gráficos e estatísticas | 4 gráficos na tela de Relatórios: barras verticais, duas barras horizontais e uma pizza, alimentados pelas consultas agregadas |
-| Consultas com dificuldade | 7 consultas em `sql/03_consultas.sql`, com `JOIN` encadeado, `GROUP BY` usando `COUNT`, `SUM`, `AVG`, `MIN` e `MAX`, subconsulta e `LEFT JOIN` |
+| Consultas com dificuldade | 11 consultas em `sql/`: 7 em `03_consultas.sql` e 4 em `05_consultas_avancadas.sql`, cobrindo `JOIN` encadeado, `GROUP BY` com `COUNT`, `SUM`, `AVG`, `MIN` e `MAX`, subconsulta, `HAVING`, `LEFT JOIN` e anti join |
+| Índices e visões | 2 índices em `sql/04_indices.sql` e 2 views em `sql/06_visoes.sql` |
 
 A regra que o projeto segue é simples: o SQL fica nos DAOs. A tela não monta `INSERT`
 nem `UPDATE`, apenas chama métodos como `clienteDAO.inserir(...)`. Há duas exceções
@@ -53,7 +54,7 @@ precisa de configuração extra.
 
 ```
 BDProj/
-├── sql/              01_criacao.sql, 02_insercao.sql e 03_consultas.sql
+├── sql/              01_criacao, 02_insercao, 03_consultas, 04_indices, 05_consultas_avancadas e 06_visoes
 ├── src/br/cesar/bd/concessionaria/
 │   ├── main/         Exec: ponto de entrada que abre a janela
 │   ├── controller/   AppController: cria a janela, instancia as views e troca de tela
@@ -149,6 +150,9 @@ Os scripts ficam em `sql/` e rodam nesta ordem.
 | `sql/01_criacao.sql` | derruba o banco se ele existir, cria `concessionaria` em utf8mb4 e as 12 tabelas |
 | `sql/02_insercao.sql` | popula os dados: 50 carros (38 vendidos e 12 em estoque), 38 vendas em 6 meses e 30 clientes em 12 cidades |
 | `sql/03_consultas.sql` | as 7 consultas analíticas, apenas leitura |
+| `sql/04_indices.sql` | cria os 2 índices novos, um em `venda(data)` e um composto em `carro(venda_id, modelo_id)` |
+| `sql/05_consultas_avancadas.sql` | anti join à esquerda, full outer join emulado (o MySQL não tem `FULL OUTER JOIN`) e duas consultas com subconsulta |
+| `sql/06_visoes.sql` | as views `vw_venda_detalhada`, com 7 joins, e `vw_estoque_por_marca_modelo`, com 3 joins e agregação |
 
 Pelo cliente `mysql`, redirecione o arquivo como entrada padrão, para os bytes passarem
 intactos:
