@@ -109,9 +109,10 @@ public class ClienteView extends View {
 
         
         btnSalvar.addActionListener(e -> {
+            int idEndGerado = -1;
             try {
                 Endereco end = extrairEnderecoDoFormulario();
-                int idEndGerado = enderecoDAO.inserir(end);
+                idEndGerado = enderecoDAO.inserir(end);
                 
                 Cliente cli = new Cliente(txtCpf.getText(), txtNome.getText(), idEndGerado);
                 clienteDAO.inserir(cli);
@@ -120,6 +121,11 @@ public class ClienteView extends View {
                 limparCampos();
                 atualizarTabela();
             } catch (SQLException ex) {
+                // Se o cliente nao entrou (CPF repetido, por exemplo), o endereco recem-criado
+                // ficaria orfao no banco. Desfaz a insercao do endereco antes de avisar.
+                if (idEndGerado != -1) {
+                    try { enderecoDAO.excluir(idEndGerado); } catch (SQLException ignorada) { }
+                }
                 mostrarMensagem("Erro ao salvar: " + ex.getMessage(), true);
             }
         });

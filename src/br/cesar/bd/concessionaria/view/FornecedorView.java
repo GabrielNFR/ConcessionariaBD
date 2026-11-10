@@ -16,7 +16,6 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
 
-import br.cesar.bd.concessionaria.controller.AppController;
 import br.cesar.bd.concessionaria.dao.FornecedorDAO;
 import br.cesar.bd.concessionaria.model.Fornecedor;
 
@@ -83,7 +82,7 @@ public class FornecedorView extends View{
 				mostrarMensagem("Fornecedor salvo com sucesso!", false);
 	            limparCampos();
 	            atualizarTabela();
-			} catch (SQLException e1) {
+			} catch (SQLException e1) { mostrarMensagem("Erro ao salvar: " + e1.getMessage(), true);
 				
 			}        	
         });
@@ -97,6 +96,7 @@ public class FornecedorView extends View{
                 limparCampos();
 	            atualizarTabela();
             } catch (SQLException exception) {
+                mostrarMensagem("Erro ao atualizar: " + exception.getMessage(), true);
             }
         });
                 
@@ -109,6 +109,7 @@ public class FornecedorView extends View{
                     limparCampos();
     	            atualizarTabela();
                 } catch (SQLException exception) {
+                    mostrarMensagem("Erro ao excluir: " + exception.getMessage(), true);
                 }
             }
         });

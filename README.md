@@ -21,7 +21,7 @@ O objetivo é cobrir, por meio de uma interface, os requisitos abaixo.
 | Visualização dos dados | `JTable` nas telas de Clientes, Fornecedores, histórico de Compras e nos 4 relatórios; `listarParaTabela()` com `JOIN` em 5 DAOs |
 | Gráficos e estatísticas | 4 gráficos na tela de Relatórios: barras verticais, duas barras horizontais e uma pizza, alimentados pelas consultas agregadas |
 | Consultas com dificuldade | 11 consultas em `sql/`: 7 em `03_consultas.sql` e 4 em `05_consultas_avancadas.sql`, cobrindo `JOIN` encadeado, `GROUP BY` com `COUNT`, `SUM`, `AVG`, `MIN` e `MAX`, subconsulta, `HAVING`, `LEFT JOIN` e anti join |
-| Índices e visões | 2 índices em `sql/04_indices.sql` e 2 views em `sql/06_visoes.sql` |
+| Índices, views e rotinas | 2 índices, 2 views, 2 funções, 2 procedimentos e 2 triggers, nos scripts `04` a `09` |
 
 A regra que o projeto segue é simples: o SQL fica nos DAOs. A tela não monta `INSERT`
 nem `UPDATE`, apenas chama métodos como `clienteDAO.inserir(...)`. Há duas exceções
@@ -54,7 +54,7 @@ precisa de configuração extra.
 
 ```
 BDProj/
-├── sql/              01_criacao, 02_insercao, 03_consultas, 04_indices, 05_consultas_avancadas e 06_visoes
+├── sql/              scripts 01 a 09: criacao, insercao, consultas, indices, views, funcoes, procedimentos e triggers
 ├── src/br/cesar/bd/concessionaria/
 │   ├── main/         Exec: ponto de entrada que abre a janela
 │   ├── controller/   AppController: cria a janela, instancia as views e troca de tela
@@ -119,9 +119,6 @@ escrever no console.
 
 ### O que ainda não está ligado
 
-- os botões `+` de nova cor e nova marca, assim como o "Salvar Novo Modelo" dentro da
-  `CompraView`, ainda não gravam no banco: eles apenas fecham o diálogo e recarregam a
-  lista;
 - não existem telas para `venda`, `carro`, `vendedor`, `modelo`, `marca` e para as duas
   tabelas de telefone. Os DAOs dessas tabelas já estão prontos, faltam as views;
 - a `InicioView` continua vazia, e é o lugar previsto para o dashboard.
@@ -153,6 +150,9 @@ Os scripts ficam em `sql/` e rodam nesta ordem.
 | `sql/04_indices.sql` | cria os 2 índices novos, um em `venda(data)` e um composto em `carro(venda_id, modelo_id)` |
 | `sql/05_consultas_avancadas.sql` | anti join à esquerda, full outer join emulado (o MySQL não tem `FULL OUTER JOIN`) e duas consultas com subconsulta |
 | `sql/06_visoes.sql` | as views `vw_venda_detalhada`, com 7 joins, e `vw_estoque_por_marca_modelo`, com 3 joins e agregação |
+| `sql/07_funcoes.sql` | as funções `fn_perfil_cliente`, com `IF`/`ELSEIF`, e `fn_valor_estoque_marca` |
+| `sql/08_procedimentos.sql` | `sp_reajustar_preco_modelo`, que só altera carro em estoque, e `sp_fechamento_caixa`, que usa cursor para calcular o saldo acumulado |
+| `sql/09_triggers.sql` | a tabela `log_auditoria` e os triggers `trg_carro_preco_alterado`, que registra mudança de preço, e `trg_venda_data_futura`, que recusa venda com data futura |
 
 Pelo cliente `mysql`, redirecione o arquivo como entrada padrão, para os bytes passarem
 intactos:

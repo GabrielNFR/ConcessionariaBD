@@ -123,9 +123,11 @@ public class CompraView extends View {
             String novaCor = JOptionPane.showInputDialog(this, "Digite o nome da nova cor:");
             if (novaCor != null && !novaCor.trim().isEmpty()) {
                 try {
+                    corDAO.inserir(new Cor(0, novaCor.trim()));
+                    carregarCores();
                     mostrarMensagem("Cor adicionada!", false);
-                } catch (Exception ex) {
-                    mostrarMensagem("Erro ao salvar cor.", true);
+                } catch (SQLException ex) {
+                    mostrarMensagem("Erro ao salvar cor: " + ex.getMessage(), true);
                 }
             }
         });
@@ -136,15 +138,39 @@ public class CompraView extends View {
 
 
         btnAddCarro.addActionListener(e -> {
-            if (txtChassi.getText().isEmpty() || txtPreco.getText().isEmpty()) {
-                mostrarMensagem("Preencha todos os campos do carro!", true);
+            if (txtChassi.getText().trim().isEmpty() || txtPreco.getText().trim().isEmpty()
+                    || txtAno.getText().trim().isEmpty()) {
+                mostrarMensagem("Preencha chassi, ano e preco do carro!", true);
                 return;
             }
+            if (cbFornecedor.getSelectedItem() == null) {
+                mostrarMensagem("Cadastre ao menos um fornecedor antes de montar a compra.", true);
+                return;
+            }
+            if (cbModelo.getSelectedItem() == null || cbCor.getSelectedItem() == null) {
+                mostrarMensagem("Selecione o modelo e a cor do carro.", true);
+                return;
+            }
+
+            BigDecimal preco = lerPreco(txtPreco.getText());
+            if (preco == null) {
+                mostrarMensagem("Preco invalido. Use apenas numeros, por exemplo 58000,00.", true);
+                return;
+            }
+
+            Integer ano = lerAno(txtAno.getText());
+            if (ano == null) {
+                mostrarMensagem("Ano invalido. Informe um ano entre 1900 e o proximo ano.", true);
+                return;
+            }
+
             modeloTabela.addRow(new Object[]{
-                txtChassi.getText(), cbModelo.getSelectedItem(), cbCor.getSelectedItem(), txtAno.getText(), txtPreco.getText()
+                txtChassi.getText().trim(), cbModelo.getSelectedItem(), cbCor.getSelectedItem(), ano, preco
             });
             txtChassi.setText("");
-            txtChassi.requestFocus(); 
+            txtAno.setText("");
+            txtPreco.setText("");
+            txtChassi.requestFocus();
         });
 
         btnFinalizar.addActionListener(e -> finalizarCompra());
@@ -220,10 +246,11 @@ public class CompraView extends View {
             String novaMarcaStr = JOptionPane.showInputDialog(dialog, "Digite o nome da nova Marca:");
             if (novaMarcaStr != null && !novaMarcaStr.trim().isEmpty()) {
                 try {
+                    marcaDAO.inserir(new Marca(0, novaMarcaStr.trim()));
                     atualizarComboMarcas.run();
                     mostrarMensagem("Marca cadastrada!", false);
-                } catch (Exception ex) {
-                    mostrarMensagem("Erro ao salvar marca.", true);
+                } catch (SQLException ex) {
+                    mostrarMensagem("Erro ao salvar marca: " + ex.getMessage(), true);
                 }
             }
         });
@@ -239,6 +266,8 @@ public class CompraView extends View {
             try {
                 Marca marcaSelecionada = (Marca) cbMarca.getSelectedItem();
                 int marcaId = marcaSelecionada.getId();
+
+                modeloDAO.inserir(new Modelo(0, txtNome.getText().trim(), marcaId));
                 
                 
                 dialog.dispose();
@@ -278,6 +307,36 @@ public class CompraView extends View {
         dialog.setVisible(true);
     }
 
+    /**
+     * Aceita "58000", "58000.50", "58.000,50" e "R$ 58.000,50".
+     * Devolve null quando o texto nao representa um valor positivo.
+     */
+    private BigDecimal lerPreco(String texto) {
+        if (texto == null) return null;
+        String limpo = texto.trim().replace("R$", "").replace(" ", "");
+        if (limpo.isEmpty()) return null;
+        if (limpo.contains(",")) {
+            limpo = limpo.replace(".", "").replace(",", ".");
+        }
+        try {
+            BigDecimal valor = new BigDecimal(limpo);
+            return valor.compareTo(BigDecimal.ZERO) > 0 ? valor : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Devolve null quando o ano nao e numerico ou esta fora da faixa aceita. */
+    private Integer lerAno(String texto) {
+        try {
+            int ano = Integer.parseInt(texto.trim());
+            int limite = java.time.LocalDate.now().getYear() + 1;
+            return (ano >= 1900 && ano <= limite) ? ano : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private void finalizarCompra() {
         if (modeloTabela.getRowCount() == 0) {
             mostrarMensagem("Adicione ao menos um carro na lista!", true);
@@ -285,10 +344,14 @@ public class CompraView extends View {
         }
 
         Fornecedor fornecedor = (Fornecedor) cbFornecedor.getSelectedItem();
+        if (fornecedor == null) {
+            mostrarMensagem("Selecione o fornecedor da compra!", true);
+            return;
+        }
         
         BigDecimal valorTotalCompra = BigDecimal.ZERO;
         for (int i = 0; i < modeloTabela.getRowCount(); i++) {
-            BigDecimal precoCarro = new BigDecimal(modeloTabela.getValueAt(i, 4).toString());
+            BigDecimal precoCarro = (BigDecimal) modeloTabela.getValueAt(i, 4);
             valorTotalCompra = valorTotalCompra.add(precoCarro);
         }
         
@@ -317,8 +380,8 @@ public class CompraView extends View {
                         String chassi = modeloTabela.getValueAt(i, 0).toString();
                         ModeloComboItem modeloSelecionado = (ModeloComboItem) modeloTabela.getValueAt(i, 1);
                         Cor corSelecionada = (Cor) modeloTabela.getValueAt(i, 2);
-                        int ano = Integer.parseInt(modeloTabela.getValueAt(i, 3).toString());
-                        BigDecimal preco = new BigDecimal(modeloTabela.getValueAt(i, 4).toString());
+                        int ano = ((Integer) modeloTabela.getValueAt(i, 3)).intValue();
+                        BigDecimal preco = (BigDecimal) modeloTabela.getValueAt(i, 4);
 
                         psCarro.setString(1, chassi);
                         psCarro.setInt(2, ano);

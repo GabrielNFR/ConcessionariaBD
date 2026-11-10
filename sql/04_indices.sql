@@ -11,9 +11,9 @@
 --     carro.modelo_id, carro.compra_id e carro.venda_id);
 --   - os UNIQUE de fornecedor.email e cor.nome.
 --
--- O script roda uma vez. Para repetir, apague antes:
---   DROP INDEX idx_venda_data ON venda;
---   DROP INDEX idx_carro_estoque_modelo ON carro;
+-- O script pode ser executado mais de uma vez. O MySQL nao tem CREATE INDEX
+-- IF NOT EXISTS, entao cada indice e criado dentro de um bloco que consulta o
+-- information_schema antes: se o indice ja existir, o comando vira um DO 0.
 
 SET NAMES utf8mb4;
 
@@ -33,7 +33,15 @@ USE concessionaria;
 -- da faixa. Com ele, o banco le apenas o intervalo pedido.
 -- ---------------------------------------------------------------------------
 
-CREATE INDEX idx_venda_data ON venda (data);
+SET @sql := IF((SELECT COUNT(*) FROM information_schema.statistics
+                 WHERE table_schema = DATABASE()
+                   AND table_name = 'venda'
+                   AND index_name = 'idx_venda_data') = 0,
+               'CREATE INDEX idx_venda_data ON venda (data)',
+               'DO 0');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- ---------------------------------------------------------------------------
 -- INDICE 2: carro (venda_id, modelo_id) - composto, nesta ordem
@@ -51,5 +59,13 @@ CREATE INDEX idx_venda_data ON venda (data);
 -- segunda.
 -- ---------------------------------------------------------------------------
 
-CREATE INDEX idx_carro_estoque_modelo ON carro (venda_id, modelo_id);
+SET @sql := IF((SELECT COUNT(*) FROM information_schema.statistics
+                 WHERE table_schema = DATABASE()
+                   AND table_name = 'carro'
+                   AND index_name = 'idx_carro_estoque_modelo') = 0,
+               'CREATE INDEX idx_carro_estoque_modelo ON carro (venda_id, modelo_id)',
+               'DO 0');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 

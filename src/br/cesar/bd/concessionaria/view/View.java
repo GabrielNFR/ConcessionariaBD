@@ -3,8 +3,6 @@ package br.cesar.bd.concessionaria.view;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
-import br.cesar.bd.concessionaria.controller.AppController;
-
 public abstract class View extends JPanel{
 	public abstract void aoAbrir();
 	
