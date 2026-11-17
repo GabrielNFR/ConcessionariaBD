@@ -17,6 +17,7 @@ public class AppController {
 		ConnectionFactory.inicializarTriggers();
 		ConnectionFactory.inicializarFuncoes();
 		ConnectionFactory.inicializarProcedures();
+		ConnectionFactory.inicializarViews();
 		
 		janela = new JanelaPrincipal(this);
 		rotas = new EnumMap<>(Rota.class);

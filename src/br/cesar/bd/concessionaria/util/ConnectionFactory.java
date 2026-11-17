@@ -161,4 +161,57 @@ public class ConnectionFactory {
             System.err.println("Aviso ao criar procedure: " + e.getMessage());
         }
     }
+    public static void inicializarViews() {
+        String viewVendaDetalhada = "CREATE OR REPLACE VIEW vw_venda_detalhada AS\n"
+                + "SELECT\n"
+                + "    v.id                         AS venda_id,\n"
+                + "    v.data                       AS data_venda,\n"
+                + "    DATE_FORMAT(v.data, '%Y-%m') AS mes,\n"
+                + "    v.valor                      AS valor_venda,\n"
+                + "    c.CPF                        AS cliente_cpf,\n"
+                + "    c.nome                       AS cliente,\n"
+                + "    en.cidade                    AS cliente_cidade,\n"
+                + "    en.estado                    AS cliente_uf,\n"
+                + "    vd.nome                      AS vendedor,\n"
+                + "    ca.chassi                    AS chassi,\n"
+                + "    ma.nome                      AS marca,\n"
+                + "    mo.nome                      AS modelo,\n"
+                + "    co.nome                      AS cor,\n"
+                + "    ca.ano                       AS ano,\n"
+                + "    ca.preco                     AS preco_carro\n"
+                + "FROM venda v\n"
+                + "JOIN cliente  c  ON c.CPF       = v.cliente_CPF\n"
+                + "JOIN endereco en ON en.id       = c.endereco_id\n"
+                + "JOIN vendedor vd ON vd.id       = v.vendedor_id\n"
+                + "JOIN carro    ca ON ca.venda_id = v.id\n"
+                + "JOIN modelo   mo ON mo.id       = ca.modelo_id\n"
+                + "JOIN marca    ma ON ma.id       = mo.marca_id\n"
+                + "JOIN cor      co ON co.id       = ca.cor_id";
+
+        String viewEstoqueMarcaModelo = "CREATE OR REPLACE VIEW vw_estoque_por_marca_modelo AS\n"
+                + "SELECT\n"
+                + "    ma.id                   AS marca_id,\n"
+                + "    ma.nome                 AS marca,\n"
+                + "    mo.id                   AS modelo_id,\n"
+                + "    mo.nome                 AS modelo,\n"
+                + "    COUNT(ca.chassi)        AS carros_em_estoque,\n"
+                + "    MIN(ca.preco)           AS menor_preco,\n"
+                + "    MAX(ca.preco)           AS maior_preco,\n"
+                + "    ROUND(AVG(ca.preco), 2) AS preco_medio,\n"
+                + "    SUM(ca.preco)           AS valor_total_estoque\n"
+                + "FROM carro ca\n"
+                + "JOIN modelo mo ON mo.id = ca.modelo_id\n"
+                + "JOIN marca  ma ON ma.id = mo.marca_id\n"
+                + "WHERE ca.venda_id IS NULL\n"
+                + "GROUP BY ma.id, ma.nome, mo.id, mo.nome";
+
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute(viewVendaDetalhada);
+            stmt.execute(viewEstoqueMarcaModelo);
+        } catch (SQLException e) {
+            System.err.println("Aviso ao criar views: " + e.getMessage());
+        }
+    }
+    
 }
