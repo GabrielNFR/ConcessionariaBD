@@ -1,11 +1,12 @@
 package br.cesar.bd.concessionaria.view;
 
 public enum Rota {
-	INICIO("Inicio",InicioView.class),
+	INICIO("Inicio",RelatoriosView.class),
 	FORNECEDOR("Fornecedores",FornecedorView.class),
 	COMPRA("Recibos de Compras",CompraView.class),
 	CLIENTE("Clientes",ClienteView.class),
-	RELATORIOS("Relatorios",RelatoriosView.class);
+	VENDEDOR("Vendedores",VendedorView.class),
+	VENDA("Vendas",VendaView.class);
 	
 	private final String text;
 	private final Class<? extends View> implementation;

@@ -121,8 +121,6 @@ public class ClienteView extends View {
                 limparCampos();
                 atualizarTabela();
             } catch (SQLException ex) {
-                // Se o cliente nao entrou (CPF repetido, por exemplo), o endereco recem-criado
-                // ficaria orfao no banco. Desfaz a insercao do endereco antes de avisar.
                 if (idEndGerado != -1) {
                     try { enderecoDAO.excluir(idEndGerado); } catch (SQLException ignorada) { }
                 }
@@ -183,10 +181,6 @@ public class ClienteView extends View {
         limparCampos();
         atualizarTabela();
     }
-
-    // ==========================================
-    // MÉTODOS AUXILIARES
-    // ==========================================
 
     private void atualizarTabela() {
         try {
