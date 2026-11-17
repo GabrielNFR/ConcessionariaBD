@@ -14,6 +14,9 @@ import java.awt.*;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.text.NumberFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -28,6 +31,7 @@ public class VendaView extends View {
 
     private JComboBox<Vendedor> cbVendedor;
     private JComboBox<Cliente> cbCliente;
+    private JTextField txtData;
     private JComboBox<CarroEstoqueItem> cbCarro;
     private JTextField txtPreco;
     private JLabel lblTotal;
@@ -37,6 +41,7 @@ public class VendaView extends View {
 
     private Map<String, CarroEstoqueItem> itensNoCarrinho = new HashMap<>();
     private final NumberFormat moedaBR = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+    private final DateTimeFormatter formatoDataBR = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private static class CarroEstoqueItem {
         private String chassi;
@@ -71,6 +76,7 @@ public class VendaView extends View {
 
         JPanel painelTopo = new JPanel(new BorderLayout(5, 5));
 
+        // 1. Dados da Venda (Vendedor, Cliente e Data)
         JPanel painelDadosVenda = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         painelDadosVenda.setBorder(BorderFactory.createTitledBorder("1. Dados da Venda"));
 
@@ -82,6 +88,11 @@ public class VendaView extends View {
         cbCliente = new JComboBox<>();
         painelDadosVenda.add(cbCliente);
 
+        painelDadosVenda.add(new JLabel("Data:"));
+        txtData = new JTextField(9);
+        painelDadosVenda.add(txtData);
+
+        // 2. Seleção de Carros em Estoque
         JPanel painelCarro = new JPanel(new GridLayout(2, 1, 5, 5));
         painelCarro.setBorder(BorderFactory.createTitledBorder("2. Adicionar Carros do Estoque"));
 
@@ -116,7 +127,7 @@ public class VendaView extends View {
         tabelaCarrinho = new JTable(modeloTabela);
         add(new JScrollPane(tabelaCarrinho), BorderLayout.CENTER);
 
-        // Rodapé simétrico ao da CompraView (botões direto em WEST e EAST)
+        // Rodapé
         JPanel painelRodape = new JPanel(new BorderLayout(10, 0));
 
         JButton btnHistorico = new JButton("Ver Recibos (Histórico)");
@@ -201,6 +212,7 @@ public class VendaView extends View {
     public void aoAbrir() {
         modeloTabela.setRowCount(0);
         itensNoCarrinho.clear();
+        txtData.setText(LocalDate.now().format(formatoDataBR));
         txtPreco.setText("");
         atualizarTotal();
 
@@ -311,13 +323,27 @@ public class VendaView extends View {
             return;
         }
 
+        // Lê a data digitada (sem bloquear data futura no Java, para o Trigger do MySQL validar!)
+        Date dataVenda = null;
+        String textoData = txtData.getText().trim();
+        if (!textoData.isEmpty()) {
+            try {
+                LocalDate localDate = LocalDate.parse(textoData, formatoDataBR);
+                dataVenda = Date.valueOf(localDate);
+            } catch (DateTimeParseException e) {
+                mostrarMensagem("Data inválida. Use o formato dd/MM/yyyy (ex: 17/11/2026).", true);
+                return;
+            }
+        }
+
         BigDecimal valorTotalVenda = BigDecimal.ZERO;
         for (int i = 0; i < modeloTabela.getRowCount(); i++) {
             BigDecimal precoCarro = (BigDecimal) modeloTabela.getValueAt(i, 4);
             valorTotalVenda = valorTotalVenda.add(precoCarro);
         }
 
-        String sqlVenda = "INSERT INTO venda (data, valor, vendedor_id, cliente_CPF) VALUES (CURRENT_DATE, ?, ?, ?)";
+        String sqlVenda = "INSERT INTO venda (data, valor, vendedor_id, cliente_CPF) "
+                + "VALUES (COALESCE(?, CURRENT_DATE), ?, ?, ?)";
         String sqlCarro = "UPDATE carro SET venda_id = ? WHERE chassi = ? AND venda_id IS NULL";
 
         try (Connection conn = ConnectionFactory.getConnection()) {
@@ -327,9 +353,10 @@ public class VendaView extends View {
                 int idVendaGerado = 0;
 
                 try (PreparedStatement psVenda = conn.prepareStatement(sqlVenda, Statement.RETURN_GENERATED_KEYS)) {
-                    psVenda.setBigDecimal(1, valorTotalVenda);
-                    psVenda.setInt(2, vendedor.getId());
-                    psVenda.setString(3, cliente.getCpf());
+                    psVenda.setDate(1, dataVenda);
+                    psVenda.setBigDecimal(2, valorTotalVenda);
+                    psVenda.setInt(3, vendedor.getId());
+                    psVenda.setString(4, cliente.getCpf());
                     psVenda.executeUpdate();
 
                     ResultSet rs = psVenda.getGeneratedKeys();

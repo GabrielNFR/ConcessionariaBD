@@ -5,6 +5,8 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -44,18 +46,23 @@ public class RelatoriosView extends View {
         lblTituloRelatorio.setBorder(BorderFactory.createEmptyBorder(0, 0, 15, 0));
         painelTopo.add(lblTituloRelatorio, BorderLayout.NORTH);
 
-        JPanel painelBotoes = new JPanel(new GridLayout(2, 2, 10, 10));
+        JPanel painelBotoes = new JPanel(new GridLayout(0, 2, 10, 10));
 
         JButton btnRel1 = new JButton("1. Total Comprado por Fornecedor");
         JButton btnRel2 = new JButton("2. Resumo de Carros no Estoque");
         JButton btnRel3 = new JButton("3. Distribuição de Clientes por Cidade");
         JButton btnRel4 = new JButton("4. Vendas Acima da Média");
+        JButton btnRel5 = new JButton("5. Classificação de Perfil dos Clientes (Função)");
+        JButton btnRel6 = new JButton("6. Fechamento de Caixa Mensal (Procedure)");
+        
 
         painelBotoes.add(btnRel1);
         painelBotoes.add(btnRel2);
         painelBotoes.add(btnRel3);
         painelBotoes.add(btnRel4);
-
+        painelBotoes.add(btnRel5);
+        painelBotoes.add(btnRel6);
+        
         painelTopo.add(painelBotoes, BorderLayout.CENTER);
         add(painelTopo, BorderLayout.NORTH);
 
@@ -76,6 +83,8 @@ public class RelatoriosView extends View {
         btnRel2.addActionListener(e -> carregarRelatorio(2, "Visão Geral: Valor e Quantidade do Estoque por Modelo"));
         btnRel3.addActionListener(e -> carregarRelatorio(3, "Distribuição Geográfica dos Clientes Cadastrados"));
         btnRel4.addActionListener(e -> carregarRelatorio(4, "Vendas Acima da Média Geral"));
+        btnRel5.addActionListener(e -> carregarRelatorio(5, "Classificação de Perfil dos Clientes (fn_perfil_cliente)"));
+        btnRel6.addActionListener(e -> carregarRelatorio(6, "Fechamento de Caixa Mensal (sp_fechamento_caixa)"));
     }
 
     @Override
@@ -150,6 +159,21 @@ public class RelatoriosView extends View {
                 }
                 chart = ChartFactory.createBarChart(titulo, "Venda / cliente", "Valor (R$)",
                         dataset, PlotOrientation.HORIZONTAL, true, true, false);
+                break;
+            }
+
+            case 5: {
+                Map<String, Integer> contagemPerfis = new LinkedHashMap<>();
+                for (int i = 0; i < modelo.getRowCount(); i++) {
+                    String perfil = String.valueOf(modelo.getValueAt(i, 2));
+                    contagemPerfis.put(perfil, contagemPerfis.getOrDefault(perfil, 0) + 1);
+                }
+
+                DefaultPieDataset<String> dataset = new DefaultPieDataset<>();
+                for (Map.Entry<String, Integer> entry : contagemPerfis.entrySet()) {
+                    dataset.setValue(entry.getKey() + " (" + entry.getValue() + ")", entry.getValue());
+                }
+                chart = ChartFactory.createPieChart(titulo, dataset, true, true, false);
                 break;
             }
 

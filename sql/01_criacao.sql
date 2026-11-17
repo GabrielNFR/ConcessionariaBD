@@ -119,3 +119,12 @@ CREATE TABLE carro(
 	FOREIGN KEY (compra_id) REFERENCES compra(id),
 	FOREIGN KEY (venda_id) REFERENCES venda(id) ON DELETE SET NULL
 );
+
+CREATE TABLE IF NOT EXISTS fechamento_caixa (
+    mes             CHAR(7)       PRIMARY KEY,
+    total_compras   DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    total_vendas    DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    saldo_mes       DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    saldo_acumulado DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    situacao        VARCHAR(10)   NOT NULL
+);

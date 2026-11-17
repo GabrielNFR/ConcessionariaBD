@@ -3,6 +3,7 @@ package br.cesar.bd.concessionaria.controller;
 import java.util.EnumMap;
 import java.util.Map;
 
+import br.cesar.bd.concessionaria.util.ConnectionFactory;
 import br.cesar.bd.concessionaria.view.JanelaPrincipal;
 import br.cesar.bd.concessionaria.view.Rota;
 import br.cesar.bd.concessionaria.view.View;
@@ -13,6 +14,10 @@ public class AppController {
 	private Map<Rota, View> rotas;
 	
 	public void iniciar() {
+		ConnectionFactory.inicializarTriggers();
+		ConnectionFactory.inicializarFuncoes();
+		ConnectionFactory.inicializarProcedures();
+		
 		janela = new JanelaPrincipal(this);
 		rotas = new EnumMap<>(Rota.class);
 		

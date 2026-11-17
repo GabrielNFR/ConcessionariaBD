@@ -45,6 +45,24 @@ public class RelatorioDAO {
                       "WHERE v.valor > (SELECT AVG(valor) FROM venda) " +
                       "ORDER BY v.valor DESC";
                 break;
+
+            case 5:
+                sql = "SELECT c.CPF AS CPF, c.nome AS Cliente, fn_perfil_cliente(c.CPF) AS Perfil, " +
+                      "COUNT(v.id) AS Qtd_Compras, COALESCE(SUM(v.valor), 0) AS Total_Gasto " +
+                      "FROM cliente c " +
+                      "LEFT JOIN venda v ON v.cliente_CPF = c.CPF " +
+                      "GROUP BY c.CPF, c.nome " +
+                      "ORDER BY Total_Gasto DESC, c.nome";
+                break;
+            case 6:
+                try (Connection connProc = ConnectionFactory.getConnection();
+                     CallableStatement cs = connProc.prepareCall("{CALL sp_fechamento_caixa()}")) {
+                    cs.execute();
+                }
+                sql = "SELECT mes AS Mes, total_compras AS Compras, total_vendas AS Vendas, " +
+                      "saldo_mes AS Saldo_Mes, saldo_acumulado AS Saldo_Acumulado, situacao AS Situacao " +
+                      "FROM fechamento_caixa ORDER BY mes";
+                break;        
         }
 
         try (Connection conn = ConnectionFactory.getConnection();
