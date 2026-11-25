@@ -26,7 +26,7 @@ public class AppController {
 			rotas.put(rota, rota.instanciarView());
 		}
 		
-		navegar(Rota.INICIO);
+		navegar(Rota.RELATORIO);
 		janela.setVisible(true);
 	}
 	

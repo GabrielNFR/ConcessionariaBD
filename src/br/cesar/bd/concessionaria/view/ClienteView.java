@@ -48,36 +48,28 @@ public class ClienteView extends View {
         txtNome = new JTextField(25);
         painelCliente.add(txtNome);
 
-        JPanel painelEndereco = new JPanel(new GridLayout(3, 4, 5, 5));
+        // Dois pares rótulo+campo por linha. O GridLayout antigo (3x4) recebia 14
+        // componentes, então o layout recalculava para 3x5 e desalinhava tudo: o "Número:"
+        // ficava ao lado do campo do Logradouro. Cada par agora é um painel próprio, então
+        // o rótulo nunca se separa do seu campo.
+        JPanel painelEndereco = new JPanel(new GridLayout(0, 2, 12, 6));
         painelEndereco.setBorder(BorderFactory.createTitledBorder("Endereço"));
-        
-        painelEndereco.add(new JLabel("CEP:"));
+
         txtCep = new JTextField();
-        painelEndereco.add(txtCep);
-        
-        painelEndereco.add(new JLabel("Logradouro:"));
         txtLogradouro = new JTextField();
-        painelEndereco.add(txtLogradouro);
-        
-        painelEndereco.add(new JLabel("Número:"));
         txtNumero = new JTextField();
-        painelEndereco.add(txtNumero);
-        
-        painelEndereco.add(new JLabel("Complemento:"));
         txtComplemento = new JTextField();
-        painelEndereco.add(txtComplemento);
-        
-        painelEndereco.add(new JLabel("Bairro:"));
         txtBairro = new JTextField();
-        painelEndereco.add(txtBairro);
-        
-        painelEndereco.add(new JLabel("Cidade:"));
         txtCidade = new JTextField();
-        painelEndereco.add(txtCidade);
-        
-        painelEndereco.add(new JLabel("Estado (UF):"));
         txtEstado = new JTextField();
-        painelEndereco.add(txtEstado);
+
+        painelEndereco.add(campoComRotulo("CEP:", txtCep));
+        painelEndereco.add(campoComRotulo("Logradouro:", txtLogradouro));
+        painelEndereco.add(campoComRotulo("Número:", txtNumero));
+        painelEndereco.add(campoComRotulo("Complemento:", txtComplemento));
+        painelEndereco.add(campoComRotulo("Bairro:", txtBairro));
+        painelEndereco.add(campoComRotulo("Cidade:", txtCidade));
+        painelEndereco.add(campoComRotulo("Estado (UF):", txtEstado));
 
         JPanel painelFormularios = new JPanel(new BorderLayout());
         painelFormularios.add(painelCliente, BorderLayout.NORTH);
@@ -109,12 +101,15 @@ public class ClienteView extends View {
 
         
         btnSalvar.addActionListener(e -> {
+            if (!validarFormulario()) {
+                return;
+            }
             int idEndGerado = -1;
             try {
                 Endereco end = extrairEnderecoDoFormulario();
                 idEndGerado = enderecoDAO.inserir(end);
                 
-                Cliente cli = new Cliente(txtCpf.getText(), txtNome.getText(), idEndGerado);
+                Cliente cli = new Cliente(txtCpf.getText().trim(), txtNome.getText().trim(), idEndGerado);
                 clienteDAO.inserir(cli);
                 
                 mostrarMensagem("Cliente salvo com sucesso!", false);
@@ -133,12 +128,15 @@ public class ClienteView extends View {
                 mostrarMensagem("Selecione um cliente na tabela para atualizar!", true);
                 return;
             }
+            if (!validarFormulario()) {
+                return;
+            }
             try {
                 Endereco end = extrairEnderecoDoFormulario();
                 end.setId(enderecoIdAtual); 
                 enderecoDAO.atualizar(end);
                 
-                Cliente cli = new Cliente(txtCpf.getText(), txtNome.getText(), enderecoIdAtual);
+                Cliente cli = new Cliente(txtCpf.getText().trim(), txtNome.getText().trim(), enderecoIdAtual);
                 clienteDAO.atualizar(cli);
                 
                 mostrarMensagem("Cliente atualizado!", false);
@@ -155,7 +153,7 @@ public class ClienteView extends View {
             int confirm = JOptionPane.showConfirmDialog(this, "Deseja realmente excluir este cliente?", "Aviso", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 try {
-                    clienteDAO.excluir(txtCpf.getText());
+                    clienteDAO.excluir(txtCpf.getText().trim());
                     enderecoDAO.excluirSeNaoUsado(enderecoIdAtual);
                     
                     mostrarMensagem("Cliente excluído!", false);
@@ -227,16 +225,67 @@ public class ClienteView extends View {
         }
     }
 
+    /** Um par rótulo + campo, com o rótulo com largura fixa para os campos ficarem alinhados. */
+    private static JPanel campoComRotulo(String rotulo, JTextField campo) {
+        JPanel par = new JPanel(new BorderLayout(6, 0));
+        JLabel label = new JLabel(rotulo);
+        label.setPreferredSize(new Dimension(104, label.getPreferredSize().height));
+        par.add(label, BorderLayout.WEST);
+        par.add(campo, BorderLayout.CENTER);
+        return par;
+    }
+
+    /**
+     * Confere os campos obrigatórios antes de gravar. Sem isso, um clique em "Salvar Novo"
+     * com o formulário em branco gravava endereço e cliente com strings vazias — e o CPF
+     * vazio ocupava a chave primária, impedindo o cadastro seguinte.
+     */
+    private boolean validarFormulario() {
+        String cpf = txtCpf.getText().trim();
+        if (!cpf.matches("\\d{11}")) {
+            mostrarMensagem("CPF inválido. Informe os 11 dígitos, só números.", true);
+            txtCpf.requestFocus();
+            return false;
+        }
+        if (txtNome.getText().trim().isEmpty()) {
+            mostrarMensagem("Informe o nome do cliente.", true);
+            txtNome.requestFocus();
+            return false;
+        }
+        if (txtLogradouro.getText().trim().isEmpty()) {
+            mostrarMensagem("Informe o logradouro do endereço.", true);
+            txtLogradouro.requestFocus();
+            return false;
+        }
+        if (txtCidade.getText().trim().isEmpty()) {
+            mostrarMensagem("Informe a cidade do endereço.", true);
+            txtCidade.requestFocus();
+            return false;
+        }
+        if (!txtEstado.getText().trim().matches("[A-Za-z]{2}")) {
+            mostrarMensagem("UF inválida. Informe a sigla com 2 letras (ex: PE).", true);
+            txtEstado.requestFocus();
+            return false;
+        }
+        String cep = txtCep.getText().trim();
+        if (!cep.isEmpty() && !cep.matches("\\d{8}")) {
+            mostrarMensagem("CEP inválido. Informe os 8 dígitos ou deixe em branco.", true);
+            txtCep.requestFocus();
+            return false;
+        }
+        return true;
+    }
+
     private Endereco extrairEnderecoDoFormulario() {
         return new Endereco(
             0, 
-            txtLogradouro.getText(),
-            txtNumero.getText(),
-            txtComplemento.getText(),
-            txtBairro.getText(),
-            txtCidade.getText(),
-            txtEstado.getText(),
-            txtCep.getText()
+            txtLogradouro.getText().trim(),
+            txtNumero.getText().trim(),
+            txtComplemento.getText().trim(),
+            txtBairro.getText().trim(),
+            txtCidade.getText().trim(),
+            txtEstado.getText().trim(),
+            txtCep.getText().trim()
         );
     }
 

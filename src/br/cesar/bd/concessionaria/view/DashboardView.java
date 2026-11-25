@@ -4,10 +4,17 @@ import br.cesar.bd.concessionaria.dao.DashboardDAO;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.CategoryAxis;
 import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PiePlot;
+import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.SpiderWebPlot;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.title.LegendTitle;
+import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.general.DefaultPieDataset;
 import org.jfree.data.xy.XYSeries;
@@ -53,14 +60,27 @@ public class DashboardView extends View {
     private final NumberFormat moedaBR = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
     private final DateTimeFormatter formatoDataBR = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
+    /** Tipografia dos gráficos: título, rótulo de eixo e texto de legenda/marca. */
+    private static final Font FONTE_TITULO = new Font("Arial", Font.BOLD, 14);
+    private static final Font FONTE_EIXO = new Font("Arial", Font.PLAIN, 11);
+    private static final Font FONTE_APOIO = new Font("Arial", Font.PLAIN, 10);
+
+    /** Quantos vendedores entram no radar — mais que isso vira um emaranhado de linhas. */
+    private static final int VENDEDORES_NO_RADAR = 8;
+
+    /** Quantas marcas ganham fatia própria na pizza; o resto entra somado em "Outras". */
+    private static final int MARCAS_NA_PIZZA = 8;
+
     public DashboardView() {
         setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        setBorder(BorderFactory.createEmptyBorder(12, 14, 10, 14));
 
-        JPanel painelTopo = new JPanel(new BorderLayout(8, 8));
+        JPanel painelTopo = new JPanel(new BorderLayout(10, 10));
 
-        JPanel painelFiltros = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
-        painelFiltros.setBorder(BorderFactory.createTitledBorder("Filtros Interativos do Dashboard (Dados em Tempo Real)"));
+        JPanel painelFiltros = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 8));
+        painelFiltros.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Filtros Interativos do Dashboard (Dados em Tempo Real)"),
+                BorderFactory.createEmptyBorder(2, 6, 4, 6)));
 
         painelFiltros.add(new JLabel("De:"));
         txtDataIni = new JTextField("01/01/2020", 9);
@@ -89,7 +109,8 @@ public class DashboardView extends View {
         JButton btnReset = new JButton("Limpar Filtros");
         painelFiltros.add(btnReset);
 
-        JPanel painelKpis = new JPanel(new GridLayout(2, 3, 8, 8));
+        JPanel painelKpis = new JPanel(new GridLayout(2, 3, 12, 12));
+        painelKpis.setBorder(BorderFactory.createEmptyBorder(2, 0, 4, 0));
 
         lblKpiFaturamento = new JLabel("R$ 0,00", SwingConstants.CENTER);
         lblKpiFaturamentoSub = new JLabel("0 vendas no período", SwingConstants.CENTER);
@@ -119,8 +140,8 @@ public class DashboardView extends View {
         painelTopo.add(painelKpis, BorderLayout.CENTER);
         add(painelTopo, BorderLayout.NORTH);
 
-        JPanel gridGraficos = new JPanel(new GridLayout(3, 2, 12, 12));
-        gridGraficos.setBorder(BorderFactory.createEmptyBorder(5, 5, 10, 5));
+        JPanel gridGraficos = new GradeGraficos(new GridLayout(3, 2, 16, 16));
+        gridGraficos.setBorder(BorderFactory.createEmptyBorder(6, 2, 12, 2));
 
         cpLinhaTemporal = criarChartPanelVazio();
         cpBarrasEstatistica = criarChartPanelVazio();
@@ -137,7 +158,9 @@ public class DashboardView extends View {
         gridGraficos.add(cpRadarVendedores);
 
         JScrollPane scrollGraficos = new JScrollPane(gridGraficos);
-        scrollGraficos.getVerticalScrollBar().setUnitIncrement(18);
+        scrollGraficos.setBorder(BorderFactory.createEmptyBorder());
+        scrollGraficos.getVerticalScrollBar().setUnitIncrement(20);
+        scrollGraficos.getHorizontalScrollBar().setUnitIncrement(20);
         add(scrollGraficos, BorderLayout.CENTER);
 
         // Eventos dos Filtros
@@ -157,19 +180,59 @@ public class DashboardView extends View {
         });
     }
 
+    /**
+     * Grade dos gráficos que acompanha a largura visível do painel: os dois gráficos de
+     * cada linha dividem a largura disponível e a rolagem fica só na vertical. Sem isso,
+     * com a janela mais estreita que o tamanho preferido, aparecia barra horizontal e os
+     * gráficos ficavam cortados.
+     */
+    private static final class GradeGraficos extends JPanel implements Scrollable {
+
+        private static final long serialVersionUID = 1L;
+
+        GradeGraficos(java.awt.LayoutManager layout) {
+            super(layout);
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle areaVisivel, int orientacao, int direcao) {
+            return 20;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle areaVisivel, int orientacao, int direcao) {
+            return Math.max(areaVisivel.height - 40, 40);
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
+    }
+
     private JPanel criarCardKpi(String titulo, JLabel lblPrincipal, JLabel lblSub, Color corDestaque) {
-        JPanel card = new JPanel(new BorderLayout(2, 2));
+        JPanel card = new JPanel(new BorderLayout(3, 4));
         card.setBackground(new Color(246, 248, 252));
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(205, 212, 222)),
-                BorderFactory.createEmptyBorder(6, 8, 6, 8)
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
         ));
 
         JLabel lblTit = new JLabel(titulo, SwingConstants.CENTER);
         lblTit.setFont(new Font("Arial", Font.PLAIN, 11));
         lblTit.setForeground(new Color(85, 90, 100));
 
-        lblPrincipal.setFont(new Font("Arial", Font.BOLD, 15));
+        lblPrincipal.setFont(new Font("Arial", Font.BOLD, 16));
         lblPrincipal.setForeground(corDestaque);
 
         lblSub.setFont(new Font("Arial", Font.PLAIN, 11));
@@ -184,7 +247,8 @@ public class DashboardView extends View {
     private ChartPanel criarChartPanelVazio() {
         JFreeChart chart = ChartFactory.createBarChart("", "", "", new DefaultCategoryDataset());
         ChartPanel panel = new ChartPanel(chart);
-        panel.setPreferredSize(new Dimension(480, 290));
+        panel.setPreferredSize(new Dimension(540, 320));
+        panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createLineBorder(new Color(210, 215, 225)));
         return panel;
     }
@@ -286,6 +350,7 @@ public class DashboardView extends View {
                 "Mês", "Valor (R$)", dataset,
                 PlotOrientation.VERTICAL, false, true, false
         );
+        estilizar(chart);
         cpLinhaTemporal.setChart(chart);
     }
 
@@ -301,6 +366,7 @@ public class DashboardView extends View {
                 "Medida Estatística", "Valor (R$)", dataset,
                 PlotOrientation.VERTICAL, false, true, false
         );
+        estilizar(chart);
         cpBarrasEstatistica.setChart(chart);
     }
 
@@ -325,6 +391,7 @@ public class DashboardView extends View {
                 "Classe de Valor", "Frequência Absoluta (Qtd)", dataset,
                 PlotOrientation.VERTICAL, false, true, false
         );
+        estilizar(chart);
         cpHistogramaFrequencia.setChart(chart);
     }
 
@@ -347,6 +414,7 @@ public class DashboardView extends View {
         domainAxis.setAutoRangeIncludesZero(false);
         domainAxis.setNumberFormatOverride(new DecimalFormat("0000"));
 
+        estilizar(chart);
         cpDispersaoCorrelacao.setChart(chart);
     }
 
@@ -355,16 +423,33 @@ public class DashboardView extends View {
         double total = 0;
         for (double val : vendasMarca.values()) total += val;
 
+        // Com uma fatia por marca (30 no seed) os rótulos se sobrepõem e a pizza vira um
+        // mosaico: as maiores aparecem individualmente e o resto entra somado em "Outras".
+        int fatias = 0;
+        double outras = 0;
+        int outrasMarcas = 0;
         for (Map.Entry<String, Double> entry : vendasMarca.entrySet()) {
-            double pct = total > 0 ? (entry.getValue() * 100.0 / total) : 0;
-            String label = String.format(new Locale("pt", "BR"), "%s (%.1f%%)", entry.getKey(), pct);
-            dataset.setValue(label, entry.getValue());
+            if (fatias < MARCAS_NA_PIZZA) {
+                double pct = total > 0 ? (entry.getValue() * 100.0 / total) : 0;
+                dataset.setValue(String.format(new Locale("pt", "BR"), "%s (%.1f%%)",
+                        entry.getKey(), pct), entry.getValue());
+                fatias++;
+            } else {
+                outras += entry.getValue();
+                outrasMarcas++;
+            }
+        }
+        if (outrasMarcas > 0) {
+            double pct = total > 0 ? (outras * 100.0 / total) : 0;
+            dataset.setValue(String.format(new Locale("pt", "BR"),
+                    "Outras %d marcas (%.1f%%)", outrasMarcas, pct), outras);
         }
 
         JFreeChart chart = ChartFactory.createPieChart(
                 "5. Participação de Vendas por Marca (%)",
                 dataset, true, true, false
         );
+        estilizar(chart);
         cpPizzaMarcas.setChart(chart);
     }
 
@@ -378,7 +463,11 @@ public class DashboardView extends View {
             maxTicket = Math.max(maxTicket, ((Number) row[3]).doubleValue());
         }
 
-        for (Object[] row : vendedores) {
+        // A escala continua relativa ao time inteiro (o melhor vendedor marca 100%), mas só
+        // os primeiros aparecem no radar: 30 séries sobrepostas não são legíveis.
+        int limite = Math.min(VENDEDORES_NO_RADAR, vendedores.size());
+        for (int i = 0; i < limite; i++) {
+            Object[] row = vendedores.get(i);
             String nome = String.valueOf(row[0]);
             double qtdPct = (((Number) row[1]).doubleValue() / maxQtd) * 100.0;
             double fatPct = (((Number) row[2]).doubleValue() / maxFat) * 100.0;
@@ -390,11 +479,81 @@ public class DashboardView extends View {
         }
 
         SpiderWebPlot plot = new SpiderWebPlot(dataset);
+        plot.setWebFilled(false);
+
         JFreeChart chart = new JFreeChart(
-                "6. Radar de Desempenho por Vendedor (Escala Relativa)",
+                "6. Radar de Desempenho: Top " + limite + " Vendedores (Escala Relativa)",
                 JFreeChart.DEFAULT_TITLE_FONT, plot, true
         );
+        estilizar(chart);
         cpRadarVendedores.setChart(chart);
+    }
+
+    // === ESTILO DOS GRÁFICOS ===
+
+    /**
+     * Título, eixos e legenda no tamanho certo para um gráfico de ~560x320. Sem isso o
+     * título domina o painel, os números do eixo ficam ilegíveis e as séries se encostam.
+     */
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private void estilizar(JFreeChart chart) {
+        chart.setAntiAlias(true);
+        chart.setPadding(new RectangleInsets(6, 8, 6, 8));
+
+        if (chart.getTitle() != null) {
+            chart.getTitle().setFont(FONTE_TITULO);
+        }
+        LegendTitle legenda = chart.getLegend();
+        if (legenda != null) {
+            legenda.setItemFont(FONTE_APOIO);
+        }
+
+        Plot plot = chart.getPlot();
+        if (plot instanceof CategoryPlot) {
+            CategoryPlot categoria = (CategoryPlot) plot;
+            categoria.setAxisOffset(new RectangleInsets(4, 8, 4, 8));
+            categoria.setBackgroundPaint(Color.WHITE);
+            categoria.setRangeGridlinePaint(new Color(228, 228, 228));
+            categoria.setDomainGridlinePaint(new Color(228, 228, 228));
+            categoria.setOutlinePaint(new Color(205, 210, 218));
+            estilizarEixo(categoria.getDomainAxis());
+            estilizarEixo(categoria.getRangeAxis());
+            if (categoria.getRangeAxis() instanceof NumberAxis) {
+                ((NumberAxis) categoria.getRangeAxis()).setNumberFormatOverride(
+                        NumberFormat.getNumberInstance(new Locale("pt", "BR")));
+            }
+        } else if (plot instanceof XYPlot) {
+            XYPlot xy = (XYPlot) plot;
+            xy.setBackgroundPaint(Color.WHITE);
+            xy.setRangeGridlinePaint(new Color(228, 228, 228));
+            xy.setDomainGridlinePaint(new Color(228, 228, 228));
+            xy.setOutlinePaint(new Color(205, 210, 218));
+            estilizarEixo(xy.getDomainAxis());
+            estilizarEixo(xy.getRangeAxis());
+        } else if (plot instanceof PiePlot) {
+            PiePlot pizza = (PiePlot) plot;
+            pizza.setBackgroundPaint(Color.WHITE);
+            pizza.setOutlineVisible(false);
+            pizza.setCircular(true);
+            pizza.setLabelFont(FONTE_APOIO);
+            pizza.setLabelGap(0.02);
+            pizza.setLabelLinkMargin(0.03);
+        } else if (plot instanceof SpiderWebPlot) {
+            SpiderWebPlot radar = (SpiderWebPlot) plot;
+            radar.setBackgroundPaint(Color.WHITE);
+            radar.setOutlinePaint(new Color(205, 210, 218));
+            radar.setLabelFont(FONTE_EIXO);
+        }
+    }
+
+    private void estilizarEixo(CategoryAxis eixo) {
+        eixo.setLabelFont(FONTE_EIXO);
+        eixo.setTickLabelFont(FONTE_APOIO);
+    }
+
+    private void estilizarEixo(ValueAxis eixo) {
+        eixo.setLabelFont(FONTE_EIXO);
+        eixo.setTickLabelFont(FONTE_APOIO);
     }
 
     // === MÉTODOS ESTATÍSTICOS ===

@@ -76,8 +76,12 @@ public class FornecedorView extends View{
         add(scrollPane, BorderLayout.CENTER);
 
         btnSalvar.addActionListener(e -> {
+        	if (!validarFormulario()) {
+        		return;
+        	}
         	try {
-				fornecedorDAO.inserir(new Fornecedor(txtCnpj.getText(), txtNome.getText(), txtEmail.getText()));
+				fornecedorDAO.inserir(new Fornecedor(txtCnpj.getText().trim(), txtNome.getText().trim(),
+						txtEmail.getText().trim()));
 
 				mostrarMensagem("Fornecedor salvo com sucesso!", false);
 	            limparCampos();
@@ -88,8 +92,12 @@ public class FornecedorView extends View{
         });
                 
         btnAtualizar.addActionListener(e -> {
+            if (!validarFormulario()) {
+                return;
+            }
             try {
-                Fornecedor f = new Fornecedor(txtCnpj.getText(), txtNome.getText(), txtEmail.getText());
+                Fornecedor f = new Fornecedor(txtCnpj.getText().trim(), txtNome.getText().trim(),
+                        txtEmail.getText().trim());
                 fornecedorDAO.atualizar(f);
                 
                 mostrarMensagem("Fornecedor atualizado!", false);
@@ -104,7 +112,7 @@ public class FornecedorView extends View{
             int confirm = JOptionPane.showConfirmDialog(this, "Deseja excluir?", "Aviso", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 try {
-                    fornecedorDAO.excluir(txtCnpj.getText());
+                    fornecedorDAO.excluir(txtCnpj.getText().trim());
                     mostrarMensagem("Fornecedor excluído!", false);
                     limparCampos();
     	            atualizarTabela();
@@ -127,6 +135,30 @@ public class FornecedorView extends View{
         }); 
 	}
 	
+	/**
+	 * Confere os campos obrigatórios antes de gravar. Sem isso, "Salvar Novo" em um
+	 * formulário em branco gravava um fornecedor com CNPJ, nome e e-mail vazios.
+	 */
+	private boolean validarFormulario() {
+		if (!txtCnpj.getText().trim().matches("\\d{14}")) {
+			mostrarMensagem("CNPJ inválido. Informe os 14 dígitos, só números.", true);
+			txtCnpj.requestFocus();
+			return false;
+		}
+		if (txtNome.getText().trim().isEmpty()) {
+			mostrarMensagem("Informe o nome do fornecedor.", true);
+			txtNome.requestFocus();
+			return false;
+		}
+		String email = txtEmail.getText().trim();
+		if (!email.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
+			mostrarMensagem("E-mail inválido. Informe no formato nome@dominio.com.", true);
+			txtEmail.requestFocus();
+			return false;
+		}
+		return true;
+	}
+
     public void aoAbrir() {
         limparCampos();
         try {

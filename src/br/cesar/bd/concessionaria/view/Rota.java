@@ -1,7 +1,7 @@
 package br.cesar.bd.concessionaria.view;
 
 public enum Rota {
-	INICIO("Inicio",RelatoriosView.class),
+	RELATORIO("Relatórios",RelatoriosView.class),
 	DASHBOARD("Dashboard",DashboardView.class),
 	FORNECEDOR("Fornecedores",FornecedorView.class),
 	COMPRA("Recibos de Compras",CompraView.class),

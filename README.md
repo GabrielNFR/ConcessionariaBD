@@ -81,7 +81,7 @@ O `Exec` faz uma coisa só: subir a aplicação na *Event Dispatch Thread*.
 SwingUtilities.invokeLater(() -> new AppController().iniciar());
 ```
 
-O `AppController` cria a `JanelaPrincipal`, um `JFrame` de 800x600, e instancia uma única
+O `AppController` cria a `JanelaPrincipal`, um `JFrame` de 1200x720 (mínimo de 1100x650), e instancia uma única
 vez cada tela do enum `Rota`, guardando todas num `EnumMap<Rota, View>`. Navegar é
 chamar `navegar(Rota destino)`, que faz três coisas:
 
@@ -106,11 +106,14 @@ sequenceDiagram
 
 | Botão (rota) | Classe | O que faz hoje |
 |---|---|---|
-| Inicio | `InicioView` | tela vazia, reservada para o dashboard |
+| Relatórios | `RelatoriosView` | 6 relatórios; cada botão carrega a tabela e o gráfico JFreeChart correspondente: compras por fornecedor, estoque por marca e modelo, clientes por cidade e UF, vendas acima da média, perfil dos clientes (`fn_perfil_cliente`) e fechamento de caixa (`sp_fechamento_caixa`) |
+| Dashboard | `DashboardView` | 6 gráficos e KPIs estatísticos (faturamento, média/mediana/moda, variância e desvio padrão, correlação ano × preço, participação por marca e radar de vendedores), com filtros de período, marca e vendedor |
 | Fornecedores | `FornecedorView` | CRUD de `fornecedor` (CNPJ, nome e e-mail) com `JTable`; clicar numa linha preenche o formulário e trava o CNPJ |
 | Recibos de Compras | `CompraView` | monta um lote de compra: escolhe o fornecedor, adiciona carros (modelo, cor, ano, preço e chassi) numa lista e grava `compra` e `carro` numa única transação; o botão "Ver Recibos" abre o histórico com `JOIN` do fornecedor |
 | Clientes | `ClienteView` | CRUD de `cliente` e `endereco` na mesma tela; a tabela vem de `listarParaTabela()`, com JOIN entre cliente e endereço, e ao excluir chama `excluirSeNaoUsado()` para não deixar endereço órfão |
-| Relatorios | `RelatoriosView` | 4 consultas com `JOIN`, uma delas com subconsulta; cada botão carrega a tabela e o gráfico JFreeChart correspondente, com barras de compras por fornecedor, barras de estoque por marca e modelo, pizza de clientes por cidade e UF e barras das vendas acima da média |
+| Vendedores | `VendedorView` | CRUD de `vendedor` (nome e comissão) com `JTable` |
+| Vendas | `VendaView` | monta a venda: escolhe vendedor, cliente e data, adiciona carros do estoque com o valor negociado e grava `venda` e `carro` numa única transação; "Ver Recibos" abre o histórico com `JOIN` |
+| Consultas | `ConsultasView` | as consultas de `sql/03` e `sql/05` e as 2 views, com filtros de período, marca e UF, tabela, gráfico e KPIs do resultado |
 
 `View` é a classe abstrata de que todas as telas herdam (`extends JPanel`). Ela obriga
 cada tela a implementar `aoAbrir()` e oferece `mostrarMensagem(texto, erro)`, um
@@ -119,9 +122,8 @@ escrever no console.
 
 ### O que ainda não está ligado
 
-- não existem telas para `venda`, `carro`, `vendedor`, `modelo`, `marca` e para as duas
-  tabelas de telefone. Os DAOs dessas tabelas já estão prontos, faltam as views;
-- a `InicioView` continua vazia, e é o lugar previsto para o dashboard.
+- não existem telas para `carro`, `modelo`, `marca` e para as duas tabelas de telefone.
+  Os DAOs dessas tabelas já estão prontos, faltam as views.
 
 ---
 
@@ -328,5 +330,20 @@ jdbc:mysql://localhost:3306/concessionaria?useSSL=false&allowPublicKeyRetrieval=
 | `Communications link failure` | serviço do MySQL parado ou porta diferente de 3306 |
 | `The server time zone value ... is unrecognized` | falta `serverTimezone=America/Sao_Paulo` |
 | `No suitable driver found` (no Java) | o JAR não está no classpath (seção 7) |
+
+---
+
+## 10. Testes
+
+A suite fica em `test/` e roda pelo `testes.ps1`, que compila `src/` e `test/` antes:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\testes.ps1
+```
+
+Ela confere os scripts de `sql/` (objetos criados, números do seed, `CHECK`, trigger,
+função, procedimento, views e as 11 consultas) e a interface (menu, carga de dados em cada
+tela, relatórios, consultas e a gravação de Cliente, Fornecedor e Compra). Os testes que
+gravam apagam no fim o que criaram. Sai com código 0 quando tudo passa.
 
 ---

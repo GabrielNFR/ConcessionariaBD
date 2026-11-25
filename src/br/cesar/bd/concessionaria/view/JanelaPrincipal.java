@@ -3,6 +3,7 @@ package br.cesar.bd.concessionaria.view;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -17,7 +18,8 @@ public class JanelaPrincipal extends JFrame{
 	
 	public JanelaPrincipal(AppController controller) {
 		setTitle("Gestão de Concessionária"); 
-	    setSize(800, 600);
+	    setSize(1200, 720);
+	    setMinimumSize(new Dimension(1100, 650));
 	    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	    setLocationRelativeTo(null);
 

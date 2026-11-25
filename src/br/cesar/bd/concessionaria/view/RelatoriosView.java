@@ -177,6 +177,21 @@ public class RelatoriosView extends View {
                 break;
             }
 
+            case 6: {
+                // Colunas do fechamento: Mes, Compras, Vendas, Saldo_Mes, Saldo_Acumulado, Situacao.
+                DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+                for (int i = 0; i < modelo.getRowCount(); i++) {
+                    String mes = String.valueOf(modelo.getValueAt(i, 0));
+                    double saldoMes = ((Number) modelo.getValueAt(i, 3)).doubleValue();
+                    double saldoAcumulado = ((Number) modelo.getValueAt(i, 4)).doubleValue();
+                    dataset.addValue(saldoMes, "Saldo do mês", mes);
+                    dataset.addValue(saldoAcumulado, "Saldo acumulado", mes);
+                }
+                chart = ChartFactory.createBarChart(titulo, "Mês", "Saldo (R$)",
+                        dataset, PlotOrientation.VERTICAL, true, true, false);
+                break;
+            }
+
             default: {
                 chart = ChartFactory.createBarChart("", "", "", new DefaultCategoryDataset());
             }
